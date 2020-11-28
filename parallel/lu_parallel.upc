@@ -15,6 +15,19 @@ struct pair {
 shared struct pair values[THREADS];
 shared struct pair max;
 
+shared struct pair *cmp_max(shared struct pair *p1, shared struct pair *p2) {
+    return (p2->second > p1->second) ? p2 : p1;
+}
+
+void reduce(shared struct pair *dst, shared struct pair *src, int src_tam,
+            shared struct pair *(*f)(shared struct pair *,
+                                     shared struct pair *)) {
+    *dst = src[0];
+    for (size_t i = 1; i < THREADS; i++) {
+        *dst = *f(dst, &src[i]);
+    }
+}
+
 int LUPDecompose(shared[] double *A, int n, double Tol) {
     int i, j, k, imax;
     double maxA, absA;
@@ -32,18 +45,10 @@ int LUPDecompose(shared[] double *A, int n, double Tol) {
 
         upc_barrier;
 
-        // upc_all_reduceI(&max, values, UPC_MAX, THREADS, 1, compare,
-        // SYNC_MODE);
-
         if (MYTHREAD == 0) {
-            max = values[0];
-            for (size_t i = 1; i < THREADS; i++) {
-                if (values[i].second > max.second) max = values[i];
-            }
+            reduce(&max, values, THREADS, cmp_max);
         }
         upc_barrier;
-
-        printf("max = %.2lf index = %d\n", max.second, max.first);
 
         if (max.first != i) {
             // pivoting rows of A
@@ -56,17 +61,7 @@ int LUPDecompose(shared[] double *A, int n, double Tol) {
 
         upc_barrier;
 
-        if (MYTHREAD == 0) {
-            printf("Matrix A after Swap:\n");
-            for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                    printf("%.2lf ", A[i * n + j]);
-                }
-                printf("\n");
-            }
-        }
-
-        // if (maxA <= Tol) return 0;  // failure, matrix is degenerate
+        if (maxA <= Tol) return 0;  // failure, matrix is degenerate
 
         for (j = i + 1; j < n; j++) {
             if (MYTHREAD == 0) A[j * n + i] /= A[i * n + i];
@@ -78,22 +73,14 @@ int LUPDecompose(shared[] double *A, int n, double Tol) {
 
             upc_barrier;
         }
-
-        if (MYTHREAD == 0) {
-            printf("Matrix A after Muls:\n");
-            for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                    printf("%.2lf ", A[i * n + j]);
-                }
-                printf("\n");
-            }
-        }
     }
 
     return 1;  // decomposition done
 }
 
 int main(int argc, char const *argv[]) {
+    FILE *out = fopen("teste.txt", "w+");
+
     srand(time(NULL));
     int N = 4;
     shared[] double *A =
@@ -113,9 +100,9 @@ int main(int argc, char const *argv[]) {
         printf("Matrix A before:\n");
         for (size_t i = 0; i < N; i++) {
             for (size_t j = 0; j < N; j++) {
-                printf("%.2lf ", A[i * N + j]);
+                fprintf(out, "%.2lf ", A[i * N + j]);
             }
-            printf("\n");
+            fprintf(out, "\n");
         }
     }
 

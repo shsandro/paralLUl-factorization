@@ -27,26 +27,10 @@ int LUPDecompose(double **A, int n, double Tol) {
             A[imax] = ptr;
         }
 
-        printf("Matrix A after Swap:\n");
-        for (size_t i = 0; i < N; i++) {
-            for (size_t j = 0; j < N; j++) {
-                printf("%.2lf ", A[i][j]);
-            }
-            printf("\n");
-        }
-
         for (j = i + 1; j < n; j++) {
             A[j][i] /= A[i][i];
 
             for (k = i + 1; k < n; k++) A[j][k] -= A[j][i] * A[i][k];
-        }
-
-        printf("Matrix A after Muls:\n");
-        for (size_t i = 0; i < N; i++) {
-            for (size_t j = 0; j < N; j++) {
-                printf("%.2lf ", A[i][j]);
-            }
-            printf("\n");
         }
     }
 
