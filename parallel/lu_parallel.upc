@@ -90,6 +90,15 @@ void help_menu(const char *prog_name) {
         "    -n <number> generate random a matrix of size number x number\n");
 }
 
+double now() {
+    const double ONE_BILLION = 1000000000.0;
+    struct timespec current_time;
+
+    clock_gettime(CLOCK_REALTIME, &current_time);
+
+    return current_time.tv_sec + (current_time.tv_nsec / ONE_BILLION);
+}
+
 int main(int argc, char **argv) {
     int N = 4, verbose = 0, ch;
     FILE *original_matrix_out = fopen("original-matrix-par.out", "w+"),
@@ -146,7 +155,9 @@ int main(int argc, char **argv) {
     }
 
     if (MYTHREAD == 0) printf("Calculating...\n");
+    double start_time = now();
     LUPDecompose(A, N, 0);
+    double end_time = now();
     if (MYTHREAD == 0) printf("Done!\n");
 
     if (MYTHREAD == 0) {
@@ -160,6 +171,8 @@ int main(int argc, char **argv) {
                 fprintf(output, "\n");
             }
         }
+
+        printf("Time elapsed: %lf\n", end_time - start_time);
     }
 
     return 0;
