@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <upc.h>
 #include <upc_collective.h>
 
@@ -78,48 +79,106 @@ int LUPDecompose(shared[] double *A, int n, double Tol) {
     return 1;  // decomposition done
 }
 
-int main(int argc, char const *argv[]) {
-    FILE *out = fopen("teste.txt", "w+");
+void help_menu(const char *prog_name) {
+    printf("Usage: %s [flags]\n", prog_name);
+    printf("    -h               prints this usage guide\n");
+    printf(
+        "    -v               prints the input and output matrix after the "
+        "process\n");
+    printf("    -i <file_name>   sets an input file\n");
+    printf("    -o <file_name>   sets an output file\n");
+    printf(
+        "    -n <number> generate random a matrix of size number x number\n");
 
-    srand(time(NULL));
-    int N = 4;
+    printf(
+        "\nIt's important to note that -o option will only work if -v option "
+        "is set\n");
+}
+
+int main(int argc, char const *argv[]) {
+    int ch, N, n_set = 0, verbose = 0;
+    FILE *output = stdout, *input = NULL;
+
+    while ((ch = getopt(argc, argv, "i:o:n:hv")) != -1) {
+        switch (ch) {
+            case 'i':
+                input = fopen(optarg, "r");
+                break;
+
+            case 'o':
+                output = fopen(optarg, "w+");
+                break;
+
+            case 'n':
+                N = atoi(optarg);
+                n_set = 1;
+                break;
+
+            case 'h':
+                help_menu(argv[0]);
+                exit(EXIT_SUCCESS);
+
+            case 'v':
+                verbose = 1;
+                break;
+
+            default:
+                help_menu(argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
     shared[] double *A =
         (shared[] double *)upc_all_alloc(THREADS, N * N * sizeof(double));
 
     if (MYTHREAD == 0) {
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                // scanf("%lf", &A[i * N + j]);
-                A[i * N + j] = rand() % 10;
+        if (input != NULL) {
+            printf("Reading inputs...\n");
+            for (size_t i = 0; i < N; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    fscanf(input, "%lf", &A[i * N + j]);
+                }
+            }
+        } else {
+            printf("Generating inputs...\n");
+            srand(time(NULL));
+            for (size_t i = 0; i < N; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    A[i * N + j] = rand() % 100;
+                }
             }
         }
     }
 
     upc_barrier;
     if (MYTHREAD == 0) {
-        printf("Matrix A before:\n");
-        for (size_t i = 0; i < N; i++) {
-            for (size_t j = 0; j < N; j++) {
-                fprintf(out, "%.2lf ", A[i * N + j]);
+        if (verbose) {
+            fprintf(output, "\nOriginal matrix:\n");
+            for (size_t i = 0; i < N; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    fprintf(output, "% 6.2lf ", A[i * N + j]);
+                }
+                fprintf(output, "\n");
             }
-            fprintf(out, "\n");
+            printf("\n");
         }
     }
 
-    // if (MYTHREAD == 0) {
     if (LUPDecompose(A, N, 0.0001) == 0) {
         printf("Erro matriz degenerada\n");
         upc_global_exit(1);
     }
-    // }
 
     if (MYTHREAD == 0) {
-        printf("Matrix A in LU:\n");
-        for (size_t i = 0; i < N; i++) {
-            for (size_t j = 0; j < N; j++) {
-                printf("%.2lf ", A[i * N + j]);
+        if (verbose) {
+            printf("Writing output...\n");
+            fprintf(output, "\nLU decomposed matrix:\n");
+            for (size_t i = 0; i < N; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    fprintf(output, "% 6.2lf ", A[i * N + j]);
+                }
+                fprintf(output, "\n");
             }
-            printf("\n");
         }
     }
 
