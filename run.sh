@@ -36,8 +36,8 @@ echo
 for size in ${sizes[@]}; do
     echo "Size ${size}"
     for i in $(eval echo "{1..$n_repeticoes}"); do
-        seq_time+=($(upcrun -shared-heap 2GB -n 1 ${par_executable} -n ${size} | grep "Time elapsed" | grep -Eo "?([0-9]*[.])?[0-9]+"))
         par_time+=($(upcrun -shared-heap 2GB -n ${n_threads} ${par_executable} -n ${size} | grep "Time elapsed" | grep -Eo "?([0-9]*[.])?[0-9]+"))
+        seq_time+=($(upcrun -shared-heap 2GB -n 1 ${par_executable} -n ${size} | grep "Time elapsed" | grep -Eo "?([0-9]*[.])?[0-9]+"))
     done
 
     python3 speedup.py $size $n_threads ${n_repeticoes} ${seq_time[@]} ${par_time[@]} > output/speedup${n_threads}_size_${size}

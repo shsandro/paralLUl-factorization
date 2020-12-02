@@ -58,22 +58,20 @@ int LUPDecompose(shared[] double *A, int n, double Tol) {
                 A[i * n + j] = A[max.first * n + j];
                 A[max.first * n + j] = aux;
             }
+            upc_barrier;
         }
-
-        upc_barrier;
 
         // if (maxA <= Tol) return 0;  // failure, matrix is degenerate
 
-        for (j = i + 1; j < n; j++) {
-            if (MYTHREAD == 0) A[j * n + i] /= A[i * n + i];
-            upc_barrier;
+        upc_forall(j = i + 1; j < n; j++; j) { A[j * n + i] /= A[i * n + i]; }
+        upc_barrier;
 
-            upc_forall(k = i + 1; k < n; k++; k) {
-                A[j * n + k] -= A[j * n + i] * A[i * n + k];
+        upc_forall(j = i + 1; j < n; j++; j) {
+            for (k = i + 1; k < n; k++) {
+                A[j * n + k] -= A[i * n + k] * A[j * n + i];
             }
-
-            upc_barrier;
         }
+        upc_barrier;
     }
 
     return 1;  // decomposition done
