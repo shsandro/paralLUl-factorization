@@ -24,7 +24,7 @@ done
 
 par_executable="lu_par.out"
 
-sizes=(4096)
+sizes=(1000 2000 4000 8000)
 
 seq_time=()
 par_time=()
@@ -40,7 +40,7 @@ for size in ${sizes[@]}; do
         seq_time+=($(upcrun -shared-heap 2GB -n 1 ${par_executable} -n ${size} | grep "Time elapsed" | grep -Eo "?([0-9]*[.])?[0-9]+"))
     done
 
-    python3 speedup.py $size $n_threads ${n_repeticoes} ${seq_time[@]} ${par_time[@]} > output/speedup${n_threads}_size_${size}
+    python3 speedup.py $size $n_threads ${n_repeticoes} ${seq_time[@]} ${par_time[@]}
 
     seq_time=()
     par_time=()
